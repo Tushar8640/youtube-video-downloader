@@ -32,6 +32,7 @@ export default function Home() {
   const [formats, setFormats] = useState<ApiResponse>([]);
 
   const handleDownload = async () => {
+    setError("");
     try {
       setFormats([]);
       const response = await axios.get(`/api/youtube?videoUrl=${videoUrl}`);
