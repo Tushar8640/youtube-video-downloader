@@ -5,6 +5,16 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 const inter = Inter({ subsets: ["latin"] });
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 type VideoFormat = {
   mimeType: string;
   qualityLabel: string;
@@ -28,7 +38,11 @@ export default function Home() {
   const [videoUrl, setVideoUrl] = useState("");
   const [error, setError] = useState("");
   const [videoQuality, setVideoQuality] = useState("");
+  const [videoITag, setVideoITag] = useState("");
   const [fileType, setFileType] = useState("");
+  const [title, setTitle] = useState("");
+  const [duration, setDuration] = useState("");
+  const [thumb, setThumb] = useState("");
   const [formats, setFormats] = useState<ApiResponse>([]);
 
   const handleDownload = async () => {
@@ -36,15 +50,21 @@ export default function Home() {
     try {
       setFormats([]);
       const response = await axios.get(`/api/youtube?videoUrl=${videoUrl}`);
-      console.log(response);
-      const filtered = response.data.filter((d: VideoFormat) => d.itag === 18);
-      setFormats(filtered);
+      console.log(response.data);
+      const filtered = response.data.formats.filter(
+        (d: VideoFormat) => d.itag === 18
+      );
+      setFormats(response.data.formats);
+      setThumb(response.data.videoDetails.thumbnails[4].url);
+      setTitle(response.data.videoDetails.title);
+      setDuration(response.data.videoDetails.lengthSeconds);
+      console.log(response.data.formats);
     } catch (error) {
       setError("Failed to download video");
       console.log(error);
     }
   };
-
+  console.log(thumb);
   useEffect(() => {
     if (videoUrl) {
       handleDownload();
@@ -115,53 +135,122 @@ export default function Home() {
           </button> */}
         </div>
         {error && <p className="text-red-500 mt-2">{error}</p>}
-        {error && <p className="text-red-500 mt-2">{error}</p>}
-        {formats.length > 0 && (
-          <div>
-            <h2 className="text-xl font-semibold mt-4">Video Formats:</h2>
-            <ul>
-              {formats.map((format, index) => (
-                <li key={index} className="mt-2">
-                  <p>
-                    <strong>Quality:</strong> {format.qualityLabel}
-                  </p>
-                  {format.contentLength && (
-                    <p>
-                      <strong>Size:</strong>{" "}
-                      {(parseInt(format.contentLength) / (1024 * 1024)).toFixed(
-                        2
-                      )}{" "}
-                      mb
-                    </p>
-                  )}
 
-                  <p>
-                    <strong>Audio Available:</strong>{" "}
-                    {format.hasAudio ? "Yes" : "No"}
-                  </p>
-                  <p>
-                    <strong>Video Available:</strong>{" "}
-                    {format.hasVideo ? "Yes" : "No"}
-                  </p>
-                  <p>
-                    <strong>Video Itag:</strong> {format.itag}
-                  </p>
+        {formats.length ? (
+          <div className="grid grid-cols-12 gap-4 my-4">
+            <div className="col-span-4">
+              {thumb && <img src={thumb} alt="thumb" />}
+            </div>
+            <div className="col-span-8 ">
+              <p className="font-bold">{title}</p>
+              <p>
+                Duration: {(Number(duration) / 60).toFixed(0)}:
+                {Number(duration) % 60}
+              </p>
+              <div className="flex space-x-3 my-3">
+                <Select onValueChange={(value) => setVideoITag(value)}>
+                  <SelectTrigger className="w-[280px]">
+                    <SelectValue placeholder="Select a Formate" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>720.mp4</SelectLabel>
 
+                      {formats
+                        .filter((item) => item.qualityLabel == "720p")
+                        .map((format, index) => (
+                          <SelectItem
+                            value={format.itag.toString()}
+                            key={index}
+                            className="my-2 shadow py-2"
+                          >
+                            <p>
+                              <strong>Quality:</strong> {format.qualityLabel}
+                            </p>
+                            {format.contentLength && (
+                              <p>
+                                <strong>Size:</strong>{" "}
+                                {(
+                                  parseInt(format.contentLength) /
+                                  (1024 * 1024)
+                                ).toFixed(2)}{" "}
+                                mb
+                              </p>
+                            )}
+
+                            <p>
+                              <strong>Video Itag:</strong> {format.itag}
+                            </p>
+                          </SelectItem>
+                        ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                <Button disabled={!videoITag}>
                   <a
-                    className="bg-purple-500 px-4 py-1 rounded text-white mt-2 mb-10"
-                    download
-                    href={`/api/download?videoUrl=${videoUrl}`}
+                    download={`${title}.mp4`}
+                    href={`http://localhost:5000/download?videoUrl=${videoUrl}&videoTag=${videoITag}`}
                   >
                     Download
                   </a>
+                </Button>
+              </div>
+              <div className="hidden">
+                {formats.length > 0 && (
+                  <div>
+                    <h2 className="text-xl font-semibold mt-4">
+                      Video Formats:
+                    </h2>
+                    <ul>
+                      {formats.map((format, index) => (
+                        <li key={index} className="my-2 shadow py-2">
+                          <p>
+                            <strong>Quality:</strong> {format.qualityLabel}
+                          </p>
+                          {format.contentLength && (
+                            <p>
+                              <strong>Size:</strong>{" "}
+                              {(
+                                parseInt(format.contentLength) /
+                                (1024 * 1024)
+                              ).toFixed(2)}{" "}
+                              mb
+                            </p>
+                          )}
 
-                  {/* <div className="my-10">
+                          <p>
+                            <strong>Audio Available:</strong>{" "}
+                            {format.hasAudio ? "Yes" : "No"}
+                          </p>
+                          <p>
+                            <strong>Video Available:</strong>{" "}
+                            {format.hasVideo ? "Yes" : "No"}
+                          </p>
+                          <p>
+                            <strong>Video Itag:</strong> {format.itag}
+                          </p>
+
+                          <a
+                            className="bg-purple-500 px-4 py-1 rounded text-white mt-2 mb-10"
+                            download
+                            href={`http://localhost:5000/download?videoUrl=${videoUrl}&videoTag=${format.itag}`}
+                          >
+                            Download
+                          </a>
+
+                          {/* <div className="my-10">
                     <video autoFocus controls src={format.url}></video>
                   </div> */}
-                </li>
-              ))}
-            </ul>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+        ) : (
+          ""
         )}
       </div>
     </main>

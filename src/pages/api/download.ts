@@ -1,43 +1,40 @@
-import { NextApiRequest, NextApiResponse } from "next";
-import ytdl from "ytdl-core";
+import ytmux from '@/lib/ytmux';
+import { NextApiRequest, NextApiResponse } from 'next';
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  console.log(req.query);
-  let videoUrl = req.query.videoUrl;
-  let videoQuality = req.query.videoQuality;
-  console.log(videoUrl);
-  console.log(videoQuality);
-
-  if (Array.isArray(videoUrl)) {
-    videoUrl = videoUrl[0];
-  }
-
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    if (!videoUrl) {
-      return res.status(400).json({ error: "Missing videoUrl parameter" });
-    }
+    const videoLink = 'https://www.youtube.com/watch?v=SAcpESN_Fk4'; // You can use req.body.videoURL if needed
+    const options = {};
 
-    const itag = 18;
-    const info = await ytdl.getInfo(videoUrl);
+    const outputStream = ytmux(videoLink, options);
+    const filename = 'output.mkv';
 
-    // Validate videoQuality against available formats
-    const format = info.formats.find((item) => item.itag === itag);
+    // Set response headers for file download
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    res.setHeader('Content-Type', 'video/x-matroska');
 
-    console.log("Formats log", format);
-    if (!format) {
-      return res.status(400).json({ error: "Invalid videoQuality parameter" });
-    }
+    // Pipe the output stream to the response
+    outputStream.on('error', (error) => {
+      console.error('Error in outputStream:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    });
 
-  
-    res.setHeader("Content-Type", "video/mp4");
+    res.on('error', (error) => {
+      console.error('Error in response stream:', error);
+    });
 
-    // Pipe the video stream directly to the response
-    ytdl(videoUrl, { format }).pipe(res);
+    outputStream.pipe(res);
+
+    // Handle events (optional)
+    res.on('finish', () => {
+      console.log('Download triggered successfully.');
+    });
+
+    res.on('error', (err) => {
+      console.error('Error triggering download:', err);
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Failed to download video" });
+    console.error('Error in download handler:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 }

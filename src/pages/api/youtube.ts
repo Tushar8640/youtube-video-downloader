@@ -17,7 +17,7 @@ export default async function handler(
     const info = await ytdl.getInfo(videoUrl);
 
  
-    res.send(info.formats);
+    res.send(info);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to download video" });
